@@ -19,7 +19,7 @@ describe("Sniper - Liquidity Functionality", function () {
         // Test that the function exists and has the correct signature
         expect(sniper.addLiquidity).to.be.a("function");
         
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
         
         // This will likely revert due to router validations, but not due to our contract logic
         await expect(
@@ -31,7 +31,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("90"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert, but not due to our contract validation
       });
@@ -46,7 +46,7 @@ describe("Sniper - Liquidity Functionality", function () {
           { tokenA: WETH_ADDRESS, tokenB: USDT_ADDRESS }  // WETH-USDT
         ];
 
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         for (const pair of tokenPairs) {
           // Test that the function accepts the parameters without reverting due to our validation
@@ -59,7 +59,7 @@ describe("Sniper - Liquidity Functionality", function () {
               ethers.parseEther("0.9"),
               ethers.parseEther("90"),
               user1.address,
-              farFutureDeadline
+              futureDeadline
             )
           ).to.be.reverted; // Will revert due to router, not our contract
         }
@@ -68,7 +68,7 @@ describe("Sniper - Liquidity Functionality", function () {
       it("Should accept different recipients", async function () {
         const { sniper, user1, user2 } = await contractFixture();
 
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         // Test with different recipient addresses
         await expect(
@@ -80,7 +80,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("90"),
             user2.address, // Different recipient
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
@@ -90,7 +90,7 @@ describe("Sniper - Liquidity Functionality", function () {
       it("Should accept zero amounts", async function () {
         const { sniper, user1 } = await contractFixture();
 
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         // Test zero amounts - our contract doesn't validate these
         await expect(
@@ -102,7 +102,7 @@ describe("Sniper - Liquidity Functionality", function () {
             0, // Zero amountAMin
             ethers.parseEther("90"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
 
@@ -115,7 +115,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             0, // Zero amountBMin
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
@@ -125,7 +125,7 @@ describe("Sniper - Liquidity Functionality", function () {
 
         const amountADesired = ethers.parseEther("1");
         const amountBDesired = ethers.parseEther("100");
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -136,7 +136,7 @@ describe("Sniper - Liquidity Functionality", function () {
             amountADesired, // Equal to desired
             amountBDesired, // Equal to desired
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
@@ -146,7 +146,7 @@ describe("Sniper - Liquidity Functionality", function () {
 
         const amountADesired = ethers.parseEther("1");
         const amountBDesired = ethers.parseEther("100");
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -157,7 +157,7 @@ describe("Sniper - Liquidity Functionality", function () {
             amountADesired + ethers.parseEther("0.1"), // Greater than desired
             amountBDesired + ethers.parseEther("10"),  // Greater than desired
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
@@ -209,7 +209,7 @@ describe("Sniper - Liquidity Functionality", function () {
       it("Should allow any user to call addLiquidity", async function () {
         const { sniper, user1, user2 } = await contractFixture();
 
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         // Test with different users - both should be able to call the function
         await expect(
@@ -221,7 +221,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("90"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not access control
 
@@ -234,7 +234,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("90"),
             user2.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not access control
       });
@@ -244,7 +244,7 @@ describe("Sniper - Liquidity Functionality", function () {
       it("Should accept same token addresses", async function () {
         const { sniper, user1 } = await contractFixture();
 
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -255,7 +255,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("0.9"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Router will handle this validation
       });
@@ -263,7 +263,7 @@ describe("Sniper - Liquidity Functionality", function () {
       it("Should accept zero address tokens", async function () {
         const { sniper, user1 } = await contractFixture();
 
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -274,7 +274,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("90"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Router will handle this validation
 
@@ -287,7 +287,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.9"),
             ethers.parseEther("90"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Router will handle this validation
       });
@@ -296,7 +296,7 @@ describe("Sniper - Liquidity Functionality", function () {
         const { sniper, user1 } = await contractFixture();
 
         const largeAmount = ethers.parseEther("1000000"); // 1 million tokens
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -307,7 +307,7 @@ describe("Sniper - Liquidity Functionality", function () {
             largeAmount,
             largeAmount,
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
@@ -316,7 +316,7 @@ describe("Sniper - Liquidity Functionality", function () {
         const { sniper, user1 } = await contractFixture();
 
         const smallAmount = 1; // 1 wei
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
 
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -327,7 +327,7 @@ describe("Sniper - Liquidity Functionality", function () {
             smallAmount,
             smallAmount,
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
@@ -368,7 +368,7 @@ describe("Sniper - Liquidity Functionality", function () {
         ).to.be.reverted; // Will revert due to router, not our validation
 
         // Then, try to add liquidity with the swapped tokens
-        const farFutureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
+        const futureDeadline = Math.floor(Date.now() / 1000) + 180; // 3 minutes from now
         
         await expect(
           sniper.connect(user1).addLiquidity(
@@ -379,7 +379,7 @@ describe("Sniper - Liquidity Functionality", function () {
             ethers.parseEther("0.04"),
             ethers.parseEther("45"),
             user1.address,
-            farFutureDeadline
+            futureDeadline
           )
         ).to.be.reverted; // Will revert due to router, not our contract
       });
