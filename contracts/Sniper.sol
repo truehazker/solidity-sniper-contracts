@@ -55,6 +55,57 @@ contract Sniper is Ownable, ReentrancyGuard {
       );
   }
 
+  function swapAndAddLiquidity(
+    uint amountEth,
+    uint amountOutMin,
+    address[] calldata path,
+    uint liquidityPercentage,
+    uint deadline
+  ) external payable nonReentrant onlyOwner returns (uint[] memory amounts, uint liquidity) {
+    require(path[0] == WETH, "Sniper: INVALID_PATH");
+    require(path.length == 2, "Sniper: SINGLE_HOP_ONLY");
+    require(liquidityPercentage > 0 && liquidityPercentage <= 100, "Sniper: INVALID_LIQUIDITY_PERCENTAGE");
+    require(msg.value >= amountEth, "Sniper: INSUFFICIENT_ETH");
+
+    address tokenB = path[1];
+
+    // Step 1: Swap ETH for tokens
+    uint[] memory swapAmounts = IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).swapExactETHForTokens{value: amountEth}(
+      amountOutMin,
+      path,
+      address(this), // received by this contract
+      deadline
+    );
+
+    uint tokensReceived = swapAmounts[1];
+
+    // Step 2: Calculate amounts for liquidity based on percentage
+    uint ethForLiquidity = (amountEth * liquidityPercentage) / 100;
+    uint tokensForLiquidity = (tokensReceived * liquidityPercentage) / 100;
+
+    // Step 3: Add liquidity
+    IWETH(WETH).deposit{value: ethForLiquidity}();
+
+    // Approve router to spend WETH
+    IERC20(WETH).approve(PANCAKE_ROUTER_ADDRESS, ethForLiquidity);
+    
+    // Approve router to spend tokenB
+    IERC20(tokenB).approve(PANCAKE_ROUTER_ADDRESS, tokensForLiquidity);
+
+    (uint amountA, uint amountB, uint liquidityAmount) = IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).addLiquidity(
+      WETH,
+      tokenB,
+      ethForLiquidity,
+      tokensForLiquidity,
+      0, // slippage tolerance for amountA
+      0, // slippage tolerance for amountB
+      address(this), // LP tokens received by this contract
+      deadline
+    );
+
+    return (swapAmounts, liquidityAmount);
+  }
+
   // Emergency withdraw
   function emergencyWithdraw(address token, uint amount) external onlyOwner nonReentrant {
     require(token != address(0), "Sniper: INVALID_TOKEN");
