@@ -92,37 +92,43 @@ contract Sniper is Ownable, ReentrancyGuard {
     if (liquidityPercent > 0) {
       uint tokensForLiquidity = (amounts[amounts.length - 1] * liquidityPercent) / 10000;
       
-      if (tokensForLiquidity > 0) {
-        // Approve router to spend tokens
-        IERC20(path[path.length - 1]).approve(PANCAKE_ROUTER_ADDRESS, tokensForLiquidity);
-        
-        // Add liquidity
-        (,, liquidity) = IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).addLiquidity(
-          WETH,
-          path[path.length - 1],
-          ethForLiquidity,
-          tokensForLiquidity,
-          amountAMin,
-          amountBMin,
-          to, // Send LP tokens directly to user
-          deadline
-        );
-        
-        // Revoke approval
-        IERC20(path[path.length - 1]).approve(PANCAKE_ROUTER_ADDRESS, 0);
-        
-        // Send remaining tokens to user
-        uint tokensToUser = amounts[amounts.length - 1] - tokensForLiquidity;
-        if (tokensToUser > 0) {
-          IERC20(path[path.length - 1]).transfer(to, tokensToUser);
-        }
-      } else {
-        // Send all tokens to user if no liquidity to add
-        IERC20(path[path.length - 1]).transfer(to, amounts[amounts.length - 1]);
+      // Approve router to spend tokens
+      IERC20(path[path.length - 1]).approve(PANCAKE_ROUTER_ADDRESS, tokensForLiquidity);
+      
+      // Add liquidity
+      (uint amountA, uint amountB, uint liquidity) = IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).addLiquidity(
+        WETH,
+        path[path.length - 1],
+        ethForLiquidity,
+        tokensForLiquidity,
+        amountAMin,
+        amountBMin,
+        to, // Send LP tokens directly to user
+        deadline
+      );
+      
+      // Revoke approval
+      IERC20(path[path.length - 1]).approve(PANCAKE_ROUTER_ADDRESS, 0);
+      
+      // Send remaining tokens to user
+      uint tokensToUser = amounts[amounts.length - 1] - amountB;
+      if (tokensToUser > 0) {
+        IERC20(path[path.length - 1]).transfer(to, tokensToUser);
+      }
+      
+      // Refund unused ETH
+      uint unusedEth = ethForLiquidity - amountA;
+      if (unusedEth > 0) {
+        payable(to).transfer(unusedEth);
       }
     } else {
       // Send all tokens to user if no liquidity percentage
       IERC20(path[path.length - 1]).transfer(to, amounts[amounts.length - 1]);
+      
+      // If no liquidity is being added, refund the ethForLiquidity back to user
+      if (ethForLiquidity > 0) {
+        payable(to).transfer(ethForLiquidity);
+      }
     }
   }
 
