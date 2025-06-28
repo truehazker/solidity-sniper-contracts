@@ -1,5 +1,9 @@
 {
   "name": "hardhat-project",
+  "version": "1.0.0",
+  "description": "Sniper contract",
+  "author": "truehazker",
+  "license": "MIT",
   "scripts": {
     "test": "hardhat test",
     "compile": "hardhat compile"
