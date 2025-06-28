@@ -7,303 +7,370 @@ import {
   ERROR_INVALID_PATH, 
   contractFixture 
 } from "./constants";
+import { getRelativeTimestamp } from "./utils";
 
 describe("Sniper - Swap Functionality", function () {
   describe("swapEthForExactTokens", function () {
     it("Should revert when path[0] is not WETH", async function () {
-      const { sniper, user1 } = await contractFixture();
+      const { sniper, owner } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const invalidPath = [
         BUSD_ADDRESS, // BUSD token
         WETH_ADDRESS  // WETH
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10; // 10 seconds from now
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10); // 10 seconds from now
 
       await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
           invalidPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
       ).to.be.revertedWith(ERROR_INVALID_PATH);
     });
 
     it("Should accept valid path with WETH as first token", async function () {
-      const { sniper, user1 } = await contractFixture();
+      const { sniper, owner } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const validPath = [
         WETH_ADDRESS, // WETH
         BUSD_ADDRESS  // BUSD token
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10; // 10 seconds from now
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10); // 10 seconds from now
 
       // This should not revert due to path validation
       await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
           validPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
-      ).to.not.be.revertedWith(ERROR_INVALID_PATH);
+      ).to.not.be.reverted;
     });
 
-    it("Should handle different recipients", async function () {
-      const { sniper, user1, user2 } = await contractFixture();
+    it("Should handle zero amountOutMin", async function () {
+      const { sniper, owner } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const validPath = [
         WETH_ADDRESS, // WETH
         BUSD_ADDRESS  // BUSD token
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10;
-
-      // Test with different recipient addresses
-      await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
-          validPath,
-          user2.address, // Different recipient
-          deadline,
-          { value: ethers.parseEther("0.1") }
-        )
-      ).to.not.be.revertedWith(ERROR_INVALID_PATH);
-    });
-
-    it("Should handle zero amountOut", async function () {
-      const { sniper, user1 } = await contractFixture();
-
-      const validPath = [
-        WETH_ADDRESS, // WETH
-        BUSD_ADDRESS  // BUSD token
-      ];
-
-      const amountOut = 0; // Zero amount
-      const deadline = Math.floor(Date.now() / 1000) + 10;
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = 0; // Zero minimum amount out
+      const deadline = await getRelativeTimestamp(+10);
 
       await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
           validPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
-      ).to.not.be.revertedWith(ERROR_INVALID_PATH);
+      ).to.not.be.reverted;
     });
 
     it("Should handle past deadline", async function () {
-      const { sniper, user1 } = await contractFixture();
+      const { sniper, owner } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const validPath = [
         WETH_ADDRESS, // WETH
         BUSD_ADDRESS  // BUSD token
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) - 10; // Past deadline
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(-10); // Past deadline
 
       await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
           validPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
-      ).to.not.be.revertedWith(ERROR_INVALID_PATH);
+      ).to.be.revertedWith("PancakeRouter: EXPIRED");
     });
   });
 
   describe("Function visibility and access", function () {
-    it("Should allow any user to call swapEthForExactTokens", async function () {
-      const { sniper, user1, user2 } = await contractFixture();
+    it("Should only allow owner to call swapEthForExactTokens", async function () {
+      const { sniper, owner, user1, user2 } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const validPath = [
         WETH_ADDRESS, // WETH
         BUSD_ADDRESS  // BUSD token
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10;
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10);
 
-      // Test with different users
+      // Owner should be able to call
+      await expect(
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
+          validPath,
+          deadline
+        )
+      ).to.not.be.reverted;
+
+      // Non-owners should not be able to call
       await expect(
         sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+          amountEth,
+          amountOutMin,
           validPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
-      ).to.not.be.revertedWith(ERROR_INVALID_PATH);
+      ).to.be.revertedWithCustomError(sniper, "OwnableUnauthorizedAccount");
 
       await expect(
         sniper.connect(user2).swapEthForExactTokens(
-          amountOut,
+          amountEth,
+          amountOutMin,
           validPath,
-          user2.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
-      ).to.not.be.revertedWith(ERROR_INVALID_PATH);
+      ).to.be.revertedWithCustomError(sniper, "OwnableUnauthorizedAccount");
     });
   });
 
   describe("Edge cases", function () {
     it("Should handle empty path array", async function () {
-      const { sniper, user1 } = await contractFixture();
+      const { sniper, owner } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const emptyPath: string[] = [];
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10;
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10);
 
       // This should revert due to array access, but not due to our validation
       await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
           emptyPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
       ).to.be.reverted; // Should revert due to array bounds, not our validation
     });
 
     it("Should handle single token path", async function () {
-      const { sniper, user1 } = await contractFixture();
+      const { sniper, owner } = await contractFixture();
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: ethers.parseEther("1")
+      });
 
       const singleTokenPath = [
         WETH_ADDRESS // Only WETH
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10;
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10);
 
       await expect(
-        sniper.connect(user1).swapEthForExactTokens(
-          amountOut,
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
           singleTokenPath,
-          user1.address,
-          deadline,
-          { value: ethers.parseEther("0.1") }
+          deadline
         )
       ).to.not.be.revertedWith(ERROR_INVALID_PATH);
     });
   });
 
   describe("Balance verification", function () {
-    it("Should decrease ETH balance and increase token balance after swap", async function () {
-      const { sniper, user1 } = await contractFixture();
+    it("Should decrease contract ETH balance after swap", async function () {
+      const { sniper, owner } = await contractFixture();
 
       const validPath = [
         WETH_ADDRESS, // WETH
         BUSD_ADDRESS  // BUSD token
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10;
-      const ethAmount = ethers.parseEther("0.1");
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10);
+      const initialEthAmount = ethers.parseEther("1");
 
-      // Get initial balances
-      const initialEthBalance = await ethers.provider.getBalance(user1.address);
-      const busdToken = await ethers.getContractAt("IERC20", BUSD_ADDRESS);
-      const initialTokenBalance = await busdToken.balanceOf(user1.address);
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: initialEthAmount
+      });
+
+      // Get initial contract ETH balance
+      const initialContractBalance = await ethers.provider.getBalance(sniper.target);
 
       // Perform swap
-      await sniper.connect(user1).swapEthForExactTokens(
-        amountOut,
+      await sniper.connect(owner).swapEthForExactTokens(
+        amountEth,
+        amountOutMin,
         validPath,
-        user1.address,
-        deadline,
-        { value: ethAmount }
+        deadline
       );
 
-      // Check final balances
-      const finalEthBalance = await ethers.provider.getBalance(user1.address);
-      const finalTokenBalance = await busdToken.balanceOf(user1.address);
+      // Check final contract ETH balance
+      const finalContractBalance = await ethers.provider.getBalance(sniper.target);
 
-      // ETH balance should decrease (accounting for gas fees)
-      expect(finalEthBalance).to.be.lt(initialEthBalance);
-      // Token balance should increase
+      // Contract ETH balance should decrease by the amount used for swap
+      expect(finalContractBalance).to.equal(initialContractBalance - amountEth);
+    });
+
+    it("Should increase contract token balance after swap", async function () {
+      const { sniper, owner } = await contractFixture();
+
+      const validPath = [
+        WETH_ADDRESS, // WETH
+        BUSD_ADDRESS  // BUSD token
+      ];
+
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10);
+      const initialEthAmount = ethers.parseEther("1");
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: initialEthAmount
+      });
+
+      // Get initial contract token balance
+      const busdToken = await ethers.getContractAt("IERC20", BUSD_ADDRESS);
+      const initialTokenBalance = await busdToken.balanceOf(sniper.target);
+
+      // Perform swap
+      await sniper.connect(owner).swapEthForExactTokens(
+        amountEth,
+        amountOutMin,
+        validPath,
+        deadline
+      );
+
+      // Check final contract token balance
+      const finalTokenBalance = await busdToken.balanceOf(sniper.target);
+
+      // Contract token balance should increase
       expect(finalTokenBalance).to.be.gt(initialTokenBalance);
     });
 
-    it("Should transfer tokens to different recipient", async function () {
-      const { sniper, user1, user2 } = await contractFixture();
+    it("Should handle zero amountOutMin correctly", async function () {
+      const { sniper, owner } = await contractFixture();
 
       const validPath = [
         WETH_ADDRESS, // WETH
         BUSD_ADDRESS  // BUSD token
       ];
 
-      const amountOut = ethers.parseEther("1");
-      const deadline = Math.floor(Date.now() / 1000) + 10;
-      const ethAmount = ethers.parseEther("0.1");
+      const amountEth = ethers.parseEther("0.1");
+      const amountOutMin = 0; // Zero minimum amount out
+      const deadline = await getRelativeTimestamp(+10);
+      const initialEthAmount = ethers.parseEther("1");
+
+      // Fund the contract with ETH first
+      await owner.sendTransaction({
+        to: sniper.target,
+        value: initialEthAmount
+      });
 
       // Get initial balances
       const busdToken = await ethers.getContractAt("IERC20", BUSD_ADDRESS);
-      const initialUser1TokenBalance = await busdToken.balanceOf(user1.address);
-      const initialUser2TokenBalance = await busdToken.balanceOf(user2.address);
+      const initialTokenBalance = await busdToken.balanceOf(sniper.target);
+      const initialContractBalance = await ethers.provider.getBalance(sniper.target);
 
-      // Perform swap to user2
-      await sniper.connect(user1).swapEthForExactTokens(
-        amountOut,
+      // Perform swap with zero amountOutMin
+      await sniper.connect(owner).swapEthForExactTokens(
+        amountEth,
+        amountOutMin,
         validPath,
-        user2.address, // Recipient is user2
-        deadline,
-        { value: ethAmount }
+        deadline
       );
 
       // Check final balances
-      const finalUser1TokenBalance = await busdToken.balanceOf(user1.address);
-      const finalUser2TokenBalance = await busdToken.balanceOf(user2.address);
-
-      // User1 token balance should remain the same (they sent ETH, not tokens)
-      expect(finalUser1TokenBalance).to.equal(initialUser1TokenBalance);
-      // User2 token balance should increase
-      expect(finalUser2TokenBalance).to.be.gt(initialUser2TokenBalance);
-    });
-
-    it("Should handle zero amountOut correctly", async function () {
-      const { sniper, user1 } = await contractFixture();
-
-      const validPath = [
-        WETH_ADDRESS, // WETH
-        BUSD_ADDRESS  // BUSD token
-      ];
-
-      const amountOut = 0; // Zero minimum amount out
-      const deadline = Math.floor(Date.now() / 1000) + 10;
-      const ethAmount = ethers.parseEther("0.1");
-
-      // Get initial balances
-      const busdToken = await ethers.getContractAt("IERC20", BUSD_ADDRESS);
-      const initialTokenBalance = await busdToken.balanceOf(user1.address);
-
-      // Perform swap with zero amountOut
-      await sniper.connect(user1).swapEthForExactTokens(
-        amountOut,
-        validPath,
-        user1.address,
-        deadline,
-        { value: ethAmount }
-      );
-
-      // Check final balance
-      const finalTokenBalance = await busdToken.balanceOf(user1.address);
+      const finalTokenBalance = await busdToken.balanceOf(sniper.target);
+      const finalContractBalance = await ethers.provider.getBalance(sniper.target);
 
       // Token balance should increase (ETH is still swapped for tokens)
-      // amountOut = 0 means no minimum, but ETH is still converted
+      // amountOutMin = 0 means no minimum, but ETH is still converted
       expect(finalTokenBalance).to.be.gt(initialTokenBalance);
+      // Contract ETH balance should decrease
+      expect(finalContractBalance).to.equal(initialContractBalance - amountEth);
+    });
+
+    it("Should revert when contract has insufficient ETH", async function () {
+      const { sniper, owner } = await contractFixture();
+
+      const validPath = [
+        WETH_ADDRESS, // WETH
+        BUSD_ADDRESS  // BUSD token
+      ];
+
+      const amountEth = ethers.parseEther("1"); // More than contract has
+      const amountOutMin = ethers.parseEther("1");
+      const deadline = await getRelativeTimestamp(+10);
+
+      // Don't fund the contract with ETH
+
+      // This should revert due to insufficient ETH
+      await expect(
+        sniper.connect(owner).swapEthForExactTokens(
+          amountEth,
+          amountOutMin,
+          validPath,
+          deadline
+        )
+      ).to.be.reverted; // Should revert due to insufficient ETH
     });
   });
 }); 

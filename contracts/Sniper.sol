@@ -13,17 +13,17 @@ contract Sniper is Ownable, ReentrancyGuard {
   constructor() Ownable(msg.sender) {}
 
   function swapEthForExactTokens(
-    uint amountOut,
+    uint amountEth,
+    uint amountOutMin,
     address[] calldata path,
-    address to,
     uint deadline
-  ) external payable returns (uint[] memory amounts) {
+  ) external payable nonReentrant onlyOwner returns (uint[] memory amounts) {
     require(path[0] == WETH, "Sniper: INVALID_PATH");
 
-    return IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).swapExactETHForTokens{value: msg.value}(
-      amountOut,
+    return IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).swapExactETHForTokens{value: amountEth}(
+      amountOutMin,
       path,
-      to,
+      address(this), // received by this contract
       deadline
     );
   }
@@ -33,9 +33,6 @@ contract Sniper is Ownable, ReentrancyGuard {
     address tokenB,
     uint amountADesired,
     uint amountBDesired,
-    uint amountAMin,
-    uint amountBMin,
-    address to,
     uint deadline
   ) external returns (uint amountA, uint amountB, uint liquidity) {
     return IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).addLiquidity(
@@ -43,9 +40,9 @@ contract Sniper is Ownable, ReentrancyGuard {
         tokenB,
         amountADesired,
         amountBDesired,
-        amountAMin,
-        amountBMin,
-        to,
+        0,
+        0,
+        address(this), // received by this contract
         deadline
       );
   }
