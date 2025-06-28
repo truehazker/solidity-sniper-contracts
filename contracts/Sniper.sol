@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IWETH.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IPancakeRouter01.sol";
@@ -29,16 +30,23 @@ contract Sniper is Ownable, ReentrancyGuard {
   }
 
   function addLiquidity(
-    address tokenA,
     address tokenB,
-    uint amountADesired,
+    uint amountEthDesired,
     uint amountBDesired,
     uint deadline
   ) external returns (uint amountA, uint amountB, uint liquidity) {
+    IWETH(WETH).deposit{value: amountEthDesired}();
+
+    // Approve router to spend WETH
+    IERC20(WETH).approve(PANCAKE_ROUTER_ADDRESS, amountEthDesired);
+    
+    // Approve router to spend tokenB
+    IERC20(tokenB).approve(PANCAKE_ROUTER_ADDRESS, amountBDesired);
+
     return IPancakeRouter01(PANCAKE_ROUTER_ADDRESS).addLiquidity(
-        tokenA,
+        WETH,
         tokenB,
-        amountADesired,
+        amountEthDesired,
         amountBDesired,
         0,
         0,
